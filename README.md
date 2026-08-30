@@ -1,404 +1,95 @@
 # 🤖 Personal AI Assistant
 
-A personal AI assistant built using **Python**, **Google Agent Development Kit (ADK)**, **Gemini**, and **uv**.
+A small local personal assistant written in Python. The repo uses a local
+SQLite database for persistence and exposes a lightweight agent definition and
+tool modules for tasks, calendar, and reminders.
 
-The goal of this project is to create an AI-powered assistant that can help manage daily activities such as:
+This README documents the current project layout and quick start steps.
 
-* 📅 Calendar and meetings
-* ⏰ Meeting reminders
-* ✅ Daily tasks
-* 🔔 Desktop notifications
-* 📝 Notes
-* 📧 Email assistance
-* 💻 Laptop-related tasks
-* 🤖 Natural-language interaction
+**Quick links**
+- [main.py](main.py)
+- [init_db.py](init_db.py)
+- [personal_assistant/agent.py](personal_assistant/agent.py)
+- [tools/task_tools.py](tools/task_tools.py)
+- [tools/calendar_tools.py](tools/calendar_tools.py)
+- [tools/reminder_tools.py](tools/reminder_tools.py)
+- [requirements.txt](requirements.txt)
+- [pyproject.toml](pyproject.toml)
 
-The project will initially use a local SQLite database and can later be extended with Google Calendar, Gmail, MCP, voice interaction, and other integrations.
+## Project layout
 
----
+The important files and folders are:
 
-## 🏗️ Architecture
+- `main.py` — simple entrypoint.
+- `init_db.py` — creates `database/` and initializes SQLite schema.
+- `personal_assistant/agent.py` — agent definition and tool registration.
+- `tools/` — modules that manage tasks, meetings and reminders.
+- `database/assistant.db` — SQLite database file (created by `init_db.py`).
 
-```text
-                         ┌──────────────────┐
-                         │       USER       │
-                         └────────┬─────────┘
-                                  │
-                                  ▼
-                       ┌────────────────────┐
-                       │   Personal Agent   │
-                       │   Google ADK       │
-                       │   Gemini           │
-                       └─────────┬──────────┘
-                                 │
-             ┌───────────────────┼───────────────────┐
-             │                   │                   │
-             ▼                   ▼                   ▼
-       ┌───────────┐       ┌────────────┐      ┌────────────┐
-       │   Tasks   │       │  Calendar  │      │ Reminders  │
-       │   Tools   │       │   Tools    │      │   Tools    │
-       └─────┬─────┘       └──────┬─────┘      └──────┬─────┘
-             │                    │                    │
-             └────────────────────┼────────────────────┘
-                                  ▼
-                         ┌─────────────────┐
-                         │  SQLite DB      │
-                         └────────┬────────┘
-                                  │
-                                  ▼
-                         ┌─────────────────┐
-                         │   Scheduler     │
-                         └────────┬────────┘
-                                  │
-                                  ▼
-                         ┌─────────────────┐
-                         │ Desktop Alerts  │
-                         └─────────────────┘
-```
+## Prerequisites
 
----
+- Python 3.11+ (the project was developed with 3.12/3.13 in mind).
+- Optional: `google-adk` if you plan to run the real ADK agent; the code
+    contains a lightweight import fallback used during development.
 
-# 📋 Prerequisites
-
-Before starting, make sure the following are installed.
-
-### Required
-
-* Python 3.12+
-* uv
-* Git
-* Google Gemini API Key
-
-Check Python:
+Install required Python packages (recommended in a virtualenv):
 
 ```bash
-python3 --version
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-Example:
+If you don't use the `requirements.txt` route, install `python-dotenv` and
+other runtime dependencies as needed.
 
-```text
-Python 3.12.x
-```
+## Quick start
 
-Check Git:
+1. Initialize the database (creates `database/assistant.db` and tables):
 
 ```bash
-git --version
+python3 init_db.py
 ```
 
----
-
-# 1. Install uv
-
-`uv` is used to manage:
-
-* Python versions
-* Virtual environments
-* Project dependencies
-* Running Python commands
-
-Install `uv` on macOS/Linux:
+2. Run a quick smoke test (this script initializes DB and exercises tools):
 
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
+python3 - <<'PY'
+from datetime import datetime, timedelta
+import init_db
+import tools.task_tools as tt
+import tools.calendar_tools as ct
+import tools.reminder_tools as rt
+
+print(tt.add_task('Sample task'))
+print(tt.get_tasks())
+print(ct.add_meeting('Sample meeting', (datetime.now()+timedelta(days=1)).isoformat()))
+print(ct.get_upcoming_meetings())
+print(rt.create_reminder('Sample reminder', (datetime.now()+timedelta(minutes=10)).isoformat()))
+print(rt.get_reminders())
+PY
 ```
 
-Restart your terminal.
+You should see success responses for task/meeting/reminder creation.
 
-Verify the installation:
+## Notes on development
 
-```bash
-uv --version
-```
+- The `tools/*` modules use `database/assistant.db` via `pathlib.Path` and
+    context managers for safe SQLite access.
+- `personal_assistant/agent.py` contains the ADK `Agent` definition; when
+    `google-adk` is not installed the module will still import (a minimal shim
+    is used during development).
 
-Example:
+## Recommended next steps
 
-```text
-uv 0.x.x
-```
+- Add unit tests for `tools/*` and a simple test runner (pytest).
+- Add formatting (black/isort) and linting (flake8) to CI.
+- Add a `services/notification_service.py` and a scheduler to process
+    reminders and deliver notifications.
 
----
+If you want, I can: run formatters, add tests, or create a GitHub Actions CI
+workflow — tell me which and I'll implement it.
 
-# 2. Install Python Using uv
-
-Install Python 3.12:
-
-```bash
-uv python install 3.12
-```
-
-Verify:
-
-```bash
-uv python list
-```
-
----
-
-# 3. Create the Project
-
-Create a new project:
-
-```bash
-uv init personal-assistant
-```
-
-Move into the project:
-
-```bash
-cd personal-assistant
-```
-
-The initial project will look similar to:
-
-```text
-personal-assistant/
-├── .python-version
-├── pyproject.toml
-├── README.md
-└── main.py
-```
-
----
-
-# 4. Configure Python Version
-
-Pin Python 3.12 for the project:
-
-```bash
-uv python pin 3.12
-```
-
-Verify:
-
-```bash
-cat .python-version
-```
-
-Expected:
-
-```text
-3.12
-```
-
----
-
-# 5. Install Google ADK
-
-Install Google Agent Development Kit:
-
-```bash
-uv add google-adk
-```
-
----
-
-# 6. Install Additional Dependencies
-
-Install environment-variable support:
-
-```bash
-uv add python-dotenv
-```
-
-Install scheduler:
-
-```bash
-uv add apscheduler
-```
-
-Install desktop notifications:
-
-```bash
-uv add plyer
-```
-
-At this point the project dependencies are managed by `uv`.
-
-You can check them in:
-
-```text
-pyproject.toml
-```
-
----
-
-# 7. Create Project Structure
-
-Create the required directories:
-
-```bash
-mkdir -p personal_assistant
-mkdir -p tools
-mkdir -p services
-mkdir -p database
-```
-
-Create Python package files:
-
-```bash
-touch personal_assistant/__init__.py
-touch tools/__init__.py
-touch services/__init__.py
-```
-
-The project should now look like:
-
-```text
-personal-assistant/
-│
-├── .python-version
-├── pyproject.toml
-├── README.md
-├── main.py
-│
-├── personal_assistant/
-│   ├── __init__.py
-│   └── agent.py
-│
-├── tools/
-│   ├── __init__.py
-│   ├── task_tools.py
-│   ├── calendar_tools.py
-│   └── reminder_tools.py
-│
-├── services/
-│   ├── __init__.py
-│   ├── scheduler.py
-│   └── notification_service.py
-│
-└── database/
-```
-
----
-
-# 8. Create Gemini API Key
-
-The assistant needs access to a Gemini model.
-
-Create a Gemini API key using Google AI Studio.
-
-Then create a `.env` file in the project root:
-
-```text
-personal-assistant/
-└── .env
-```
-
-Add:
-
-```env
-GOOGLE_API_KEY=your_gemini_api_key_here
-```
-
-Replace:
-
-```text
-your_gemini_api_key_here
-```
-
-with your actual API key.
-
----
-
-# 9. Protect the API Key
-
-Never commit `.env` to Git.
-
-Create `.gitignore`:
-
-```bash
-touch .gitignore
-```
-
-Add:
-
-```gitignore
-.env
-.venv/
-__pycache__/
-*.pyc
-database/*.db
-.DS_Store
-```
-
----
-
-# 10. Create the ADK Agent
-
-Create:
-
-```text
-personal_assistant/agent.py
-```
-
-The agent will contain:
-
-* Gemini model configuration
-* Agent instructions
-* Task tools
-* Calendar tools
-* Reminder tools
-
-Example:
-
-```python
-from google.adk.agents import Agent
-
-from tools.task_tools import (
-    add_task,
-    get_tasks,
-    complete_task
-)
-
-from tools.calendar_tools import (
-    add_meeting,
-    get_upcoming_meetings
-)
-
-from tools.reminder_tools import (
-    create_reminder,
-    get_reminders
-)
-
-
-def get_current_time() -> dict:
-    """
-    Return current local date and time.
-    """
-
-    from datetime import datetime
-
-    now = datetime.now()
-
-    return {
-        "date": now.strftime("%Y-%m-%d"),
-        "time": now.strftime("%H:%M:%S"),
-        "day": now.strftime("%A")
-    }
-
-
-root_agent = Agent(
-    name="personal_assistant",
-
-    model="gemini-2.5-flash",
-
-    description="""
-    A personal AI assistant that helps manage
-    tasks, meetings, reminders and daily activities.
-    """,
-
-    instruction="""
-    You are a personal AI assistant.
-
-    Help the user manage:
-
-    - Daily tasks
-    - Meetings
-    - Calendar activities
-    - Reminders
-    - Daily planning
 
     Always use the available tools when the user
     wants to create, retrieve, update or manage

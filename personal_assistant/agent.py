@@ -1,4 +1,21 @@
-from google.adk.agents import Agent
+try:
+    from google.adk.agents import Agent
+except Exception:  # pragma: no cover - fallback for environments without google-adk
+    class Agent:
+        """Lightweight fallback Agent used when `google-adk` is not installed.
+
+        This shim allows importing the module in development or CI environments
+        where the ADK dependency is not available. It intentionally implements
+        a minimal interface (stores constructor args) so tooling and tests can
+        import the file.
+        """
+
+        def __init__(self, *args, **kwargs):
+            self._args = args
+            self._kwargs = kwargs
+
+        def __repr__(self):
+            return f"<Agent name={self._kwargs.get('name', None)}>"
 
 from tools.task_tools import (
     add_task,

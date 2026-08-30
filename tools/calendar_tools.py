@@ -1,114 +1,68 @@
 import sqlite3
 from datetime import datetime
+from pathlib import Path
+from typing import Dict
 
 
-DB_NAME = "database/assistant.db"
+DB_PATH = Path("database") / "assistant.db"
 
 
-def init_calendar_database():
+def init_calendar_database() -> None:
+    """Create the `meetings` table if it doesn't exist."""
 
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS meetings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            meeting_time TEXT NOT NULL,
-            duration INTEGER,
-            created_at TEXT
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS meetings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                meeting_time TEXT NOT NULL,
+                duration INTEGER,
+                created_at TEXT
+            )
+        """)
+
+
+def add_meeting(title: str, meeting_time: str, duration: int = 30) -> Dict:
+    """Schedule a meeting and return status with the new meeting id."""
+
+    created_at = datetime.now().isoformat()
+
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO meetings
+            (title, meeting_time, duration, created_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            (title, meeting_time, duration, created_at),
         )
-    """)
+        meeting_id = cursor.lastrowid
 
-    conn.commit()
-    conn.close()
-
-
-def add_meeting(
-    title: str,
-    meeting_time: str,
-    duration: int = 30
-) -> dict:
-    """
-    Schedule a meeting.
-
-    Args:
-        title: Meeting title.
-        meeting_time: Meeting date and time.
-        duration: Meeting duration in minutes.
-
-    Returns:
-        Meeting creation status.
-    """
-
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-
-    cursor.execute(
-        """
-        INSERT INTO meetings
-        (title, meeting_time, duration, created_at)
-        VALUES (?, ?, ?, ?)
-        """,
-        (
-            title,
-            meeting_time,
-            duration,
-            datetime.now().isoformat()
-        )
-    )
-
-    conn.commit()
-
-    meeting_id = cursor.lastrowid
-
-    conn.close()
-
-    return {
-        "status": "success",
-        "message": f"Meeting '{title}' scheduled",
-        "meeting_id": meeting_id
-    }
+    return {"status": "success", "message": f"Meeting '{title}' scheduled", "meeting_id": meeting_id}
 
 
-def get_upcoming_meetings() -> dict:
-    """
-    Get all upcoming meetings.
-
-    Returns:
-        List of scheduled meetings.
-    """
-
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
+def get_upcoming_meetings() -> Dict:
+    """Return meetings whose meeting_time is greater than or equal to now."""
 
     now = datetime.now().isoformat()
 
-    cursor.execute(
-        """
-        SELECT id, title, meeting_time, duration
-        FROM meetings
-        WHERE meeting_time >= ?
-        ORDER BY meeting_time
-        """,
-        (now,)
-    )
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id, title, meeting_time, duration
+            FROM meetings
+            WHERE meeting_time >= ?
+            ORDER BY meeting_time
+            """,
+            (now,),
+        )
+        rows = cursor.fetchall()
 
-    rows = cursor.fetchall()
+    meetings = [{"id": r[0], "title": r[1], "meeting_time": r[2], "duration": r[3]} for r in rows]
 
-    conn.close()
-
-    meetings = []
-
-    for row in rows:
-        meetings.append({
-            "id": row[0],
-            "title": row[1],
-            "meeting_time": row[2],
-            "duration": row[3]
-        })
-
-    return {
-        "status": "success",
-        "meetings": meetings
-    }
+    return {"status": "success", "meetings": meetings}

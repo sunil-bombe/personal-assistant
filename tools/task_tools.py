@@ -1,141 +1,109 @@
 import sqlite3
 from datetime import datetime
+from pathlib import Path
+from typing import Optional, Dict
 
 
-DB_NAME = "database/assistant.db"
+DB_PATH = Path("database") / "assistant.db"
 
 
-def init_database():
-    """Initialize the tasks database."""
+def init_database() -> None:
+    """Initialize the tasks database (creates table if missing).
 
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS tasks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            due_date TEXT,
-            status TEXT DEFAULT 'pending',
-            created_at TEXT
-        )
-    """)
-
-    conn.commit()
-    conn.close()
-
-
-def add_task(title: str, due_date: str = None) -> dict:
+    Creates the `tasks` table with fields: id, title, due_date, status, created_at.
     """
-    Add a new task to the personal task list.
+
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                due_date TEXT,
+                status TEXT DEFAULT 'pending',
+                created_at TEXT
+            )
+        """)
+
+
+def add_task(title: str, due_date: Optional[str] = None) -> Dict:
+    """Add a new task to the personal task list.
 
     Args:
         title: Description of the task.
-        due_date: Optional due date.
+        due_date: Optional due date in ISO format (YYYY-MM-DD or full datetime).
 
     Returns:
-        Status of the task creation.
+        A dict containing status, message, and new task id.
     """
 
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
+    created_at = datetime.now().isoformat()
 
-    cursor.execute(
-        """
-        INSERT INTO tasks (title, due_date, created_at)
-        VALUES (?, ?, ?)
-        """,
-        (
-            title,
-            due_date,
-            datetime.now().isoformat()
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO tasks (title, due_date, created_at)
+            VALUES (?, ?, ?)
+            """,
+            (title, due_date, created_at),
         )
-    )
-
-    conn.commit()
-    task_id = cursor.lastrowid
-    conn.close()
+        task_id = cursor.lastrowid
 
     return {
         "status": "success",
         "message": f"Task '{title}' added successfully",
-        "task_id": task_id
+        "task_id": task_id,
     }
 
 
-def get_tasks() -> dict:
-    """
-    Get all pending tasks.
+def get_tasks() -> Dict:
+    """Return all pending tasks ordered by due date.
 
-    Returns:
-        List of pending tasks.
+    Returns a dict with status and a list of task objects.
     """
 
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id, title, due_date, status
+            FROM tasks
+            WHERE status = 'pending'
+            ORDER BY due_date IS NULL, due_date
+            """
+        )
+        rows = cursor.fetchall()
 
-    cursor.execute("""
-        SELECT id, title, due_date, status
-        FROM tasks
-        WHERE status = 'pending'
-        ORDER BY due_date
-    """)
+    tasks = [
+        {"id": r[0], "title": r[1], "due_date": r[2], "status": r[3]}
+        for r in rows
+    ]
 
-    rows = cursor.fetchall()
-
-    conn.close()
-
-    tasks = []
-
-    for row in rows:
-        tasks.append({
-            "id": row[0],
-            "title": row[1],
-            "due_date": row[2],
-            "status": row[3]
-        })
-
-    return {
-        "status": "success",
-        "tasks": tasks
-    }
+    return {"status": "success", "tasks": tasks}
 
 
-def complete_task(task_id: int) -> dict:
-    """
-    Mark a task as completed.
+def complete_task(task_id: int) -> Dict:
+    """Mark a task as completed by id.
 
-    Args:
-        task_id: ID of the task.
-
-    Returns:
-        Status message.
+    Returns an error dict if no row was updated.
     """
 
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE tasks
+            SET status = 'completed'
+            WHERE id = ?
+            """,
+            (task_id,),
+        )
+        updated = cursor.rowcount
 
-    cursor.execute(
-        """
-        UPDATE tasks
-        SET status = 'completed'
-        WHERE id = ?
-        """,
-        (task_id,)
-    )
+    if updated == 0:
+        return {"status": "error", "message": "Task not found"}
 
-    conn.commit()
-
-    if cursor.rowcount == 0:
-        conn.close()
-        return {
-            "status": "error",
-            "message": "Task not found"
-        }
-
-    conn.close()
-
-    return {
-        "status": "success",
-        "message": f"Task {task_id} marked as completed"
-    }
+    return {"status": "success", "message": f"Task {task_id} marked as completed"}
