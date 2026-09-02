@@ -159,6 +159,18 @@ Run it from the project directory:
 ./run.sh
 ```
 
+The script resolves its own project directory, so it can also be started from
+another directory with its absolute path:
+
+```bash
+/Users/your-name/path/to/personal-assistant/run.sh
+```
+
+The runner does not create `.env` or API keys. Create `.env` first and add the
+credentials for the provider you want to use, as described in
+[Environment Configuration](#environment-configuration). Without a valid key,
+the page will load but model requests will fail authentication.
+
 Open the printed URL, select an agent, and begin chatting. Press `Ctrl+C` in
 the terminal to stop the server.
 
@@ -174,8 +186,19 @@ To listen on a specific host and port:
 HOST=0.0.0.0 PORT=8081 ./run.sh
 ```
 
-The script stops immediately if dependency installation, database
-initialization, compilation, or server startup fails.
+The script prints the active project directory and URL, then runs these
+commands in order:
+
+```text
+Step 1/4: uv sync
+Step 2/4: uv run python init_db.py
+Step 3/4: uv run python -m py_compile ...
+Step 4/4: uv run python main.py
+```
+
+It stops immediately if dependency installation, database initialization,
+compilation, or server startup fails. Press `Ctrl+C` to stop the final server
+step.
 
 ## Using The Web UI
 
