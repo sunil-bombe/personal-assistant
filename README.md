@@ -1,943 +1,322 @@
-# 🤖 Personal AI Assistant
+# Personal Assistant
 
-A small local personal assistant written in Python. The repo uses a local
-SQLite database for persistence and exposes a lightweight agent definition and
-tool modules for tasks, calendar, and reminders.
+A local, web-based personal assistant powered by Google ADK and LiteLLM. Choose
+Claude, Gemini, or OpenAI before starting a conversation. Every provider uses
+the same agent template, SQLite-backed tools, and private in-memory web
+sessions.
 
-This README documents the current project layout and quick start steps.
+## Features
 
-**Quick links**
-- [main.py](main.py)
-- [init_db.py](init_db.py)
-- [personal_assistant/agent.py](personal_assistant/agent.py)
-- [tools/task_tools.py](tools/task_tools.py)
-- [tools/calendar_tools.py](tools/calendar_tools.py)
-- [tools/reminder_tools.py](tools/reminder_tools.py)
-- [requirements.txt](requirements.txt)
-- [pyproject.toml](pyproject.toml)
+- Agent picker for Claude, Gemini, and OpenAI.
+- Separate conversation session for each selected provider.
+- Task management: add, list, and complete tasks.
+- Calendar management: add and list upcoming meetings.
+- Reminders: create and list pending reminders.
+- Current date and time tool.
+- Responsive desktop and mobile web interface.
+- Custom model IDs supported through LiteLLM.
+- Tool selection supported when creating agents in Python.
 
-## Project layout
+## Project Structure
 
-The important files and folders are:
+```text
+personal-assistant/
+├── main.py                         # Custom web server entrypoint
+├── web_app.py                      # FastAPI app and ADK runner integration
+├── init_db.py                      # Initialize the SQLite database
+├── pyproject.toml                  # uv project configuration
+├── requirements.txt                # pip dependencies
+├── database/assistant.db           # Local SQLite database
+├── static/
+│   ├── index.html                  # Web UI markup
+│   ├── styles.css                  # Responsive visual design
+│   └── app.js                      # Agent picker and chat client
+├── personal_assistant/
+│   ├── agent.py                    # Default configurable ADK agent
+│   ├── agent_template.py           # Agent factory and tool registry
+│   ├── model_config.py             # LiteLLM provider configuration
+│   ├── claude_agent.py             # Claude agent definition
+│   ├── gemini_agent.py             # Gemini agent definition
+│   └── openai_agent.py             # OpenAI agent definition
+├── claude_agent/agent.py           # Standalone ADK app entrypoint
+├── gemini_agent/agent.py           # Standalone ADK app entrypoint
+├── openai_agent/agent.py           # Standalone ADK app entrypoint
+└── tools/
+    ├── task_tools.py
+    ├── calendar_tools.py
+    └── reminder_tools.py
+```
 
-- `main.py` — simple entrypoint.
-- `init_db.py` — creates `database/` and initializes SQLite schema.
-- `personal_assistant/agent.py` — agent definition and tool registration.
-- `tools/` — modules that manage tasks, meetings and reminders.
-- `database/assistant.db` — SQLite database file (created by `init_db.py`).
+## Requirements
 
-## Prerequisites
+- macOS, Linux, or Windows
+- Python 3.12 or newer
+- `uv` recommended, or Python `venv` and `pip`
+- An API key for the provider you want to use
 
-- Python 3.11+ (the project was developed with 3.12/3.13 in mind).
-- Optional: `google-adk` if you plan to run the real ADK agent; the code
-    contains a lightweight import fallback used during development.
+The project uses `google-adk[extensions]`, which includes the LiteLLM
+integration needed for Claude, Gemini, and OpenAI models.
 
-Install required Python packages (recommended in a virtualenv):
+## Installation With uv
+
+From the project directory:
 
 ```bash
+cd personal-assistant
+uv sync
+```
+
+The first synchronization installs the ADK, LiteLLM, FastAPI, Uvicorn, and
+related dependencies into the project environment.
+
+## Installation With pip
+
+```bash
+cd personal-assistant
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-If you don't use the `requirements.txt` route, install `python-dotenv` and
-other runtime dependencies as needed.
+On Windows PowerShell, activate the environment with:
 
-## Quick start
-
-1. Initialize the database (creates `database/assistant.db` and tables):
-
-```bash
-python3 init_db.py
+```powershell
+.venv\Scripts\Activate.ps1
 ```
 
-2. Run a quick smoke test (this script initializes DB and exercises tools):
+## Environment Configuration
 
-```bash
-python3 - <<'PY'
-from datetime import datetime, timedelta
-import init_db
-import tools.task_tools as tt
-import tools.calendar_tools as ct
-import tools.reminder_tools as rt
+Create a local `.env` file in the project root. Add only the keys required by
+the provider you plan to use:
 
-print(tt.add_task('Sample task'))
-print(tt.get_tasks())
-print(ct.add_meeting('Sample meeting', (datetime.now()+timedelta(days=1)).isoformat()))
-print(ct.get_upcoming_meetings())
-print(rt.create_reminder('Sample reminder', (datetime.now()+timedelta(minutes=10)).isoformat()))
-print(rt.get_reminders())
-PY
+```dotenv
+ANTHROPIC_API_KEY=your_anthropic_key
+OPENAI_API_KEY=your_openai_key
+GEMINI_API_KEY=your_gemini_key
 ```
 
-You should see success responses for task/meeting/reminder creation.
+Gemini also accepts `GOOGLE_API_KEY` and
+`GOOGLE_GENERATIVE_AI_API_KEY`; the application maps those names to
+`GEMINI_API_KEY` when needed.
 
-## Notes on development
+Never commit real API keys. The `.gitignore` should include `.env` in addition
+to the virtual environment and generated Python files.
 
-- The `tools/*` modules use `database/assistant.db` via `pathlib.Path` and
-    context managers for safe SQLite access.
-- `personal_assistant/agent.py` contains the ADK `Agent` definition; when
-    `google-adk` is not installed the module will still import (a minimal shim
-    is used during development).
+## Start The Custom Web UI
 
-## Recommended next steps
+Initialize the database once:
 
-- Add unit tests for `tools/*` and a simple test runner (pytest).
-- Add formatting (black/isort) and linting (flake8) to CI.
-- Add a `services/notification_service.py` and a scheduler to process
-    reminders and deliver notifications.
+```bash
+uv run python init_db.py
+```
 
-If you want, I can: run formatters, add tests, or create a GitHub Actions CI
-workflow — tell me which and I'll implement it.
+Start the custom web interface:
 
+```bash
+uv run python main.py
+```
 
-    Always use the available tools when the user
-    wants to create, retrieve, update or manage
-    tasks, meetings or reminders.
+Open [http://127.0.0.1:8080](http://127.0.0.1:8080) in a browser, select an
+agent, and then start chatting.
 
-    Be concise and helpful.
+If port `8080` is already in use, choose another port with `PORT`:
 
-    When working with dates and times use:
+```bash
+PORT=8081 uv run python main.py
+```
 
-    YYYY-MM-DD HH:MM:SS
-    """,
+The host is configurable too:
 
-    tools=[
-        get_current_time,
+```bash
+HOST=0.0.0.0 PORT=8081 uv run python main.py
+```
 
-        add_task,
-        get_tasks,
-        complete_task,
+The server reads `HOST` and `PORT` in [main.py](main.py). The default values are
+`127.0.0.1` and `8080`.
 
-        add_meeting,
-        get_upcoming_meetings,
+## Using The Web UI
 
-        create_reminder,
-        get_reminders
-    ]
+1. Open the web UI.
+2. Select Claude, Gemini, or OpenAI from the agent cards.
+3. Confirm the displayed model and tool count.
+4. Use a suggestion or type a message.
+5. Press Enter to send. Use Shift + Enter for a new line.
+6. Select **New chat** to clear the current conversation and create a fresh
+   session.
+
+The UI calls these endpoints:
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/` | Serves the web interface |
+| `GET` | `/api/agents` | Lists selectable agents, models, and tools |
+| `POST` | `/api/chat` | Sends a message to the selected agent |
+
+Example chat request:
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"agent":"gemini","message":"Show my upcoming meetings"}'
+```
+
+The response includes a `session_id`. Send it with later requests to continue
+the same provider-specific conversation.
+
+## Available Agents
+
+The custom UI exposes these agents:
+
+| UI ID | Model alias | Default model |
+| --- | --- | --- |
+| `claude` | `claude` | `anthropic/claude-sonnet-4-20250514` |
+| `gemini` | `gemini` | `gemini/gemini-2.5-flash` |
+| `openai` | `openai` | `openai/gpt-5.4-mini` |
+
+The standalone ADK app entrypoints are also available in `claude_agent/`,
+`gemini_agent/`, and `openai_agent/`. To run the ADK development UI instead of
+the custom interface:
+
+```bash
+uv run adk web --port 8001
+```
+
+ADK Web will discover the standalone apps and the original
+`personal_assistant` app. Use port `8001` if port `8000` is occupied.
+
+## Create A Custom Agent
+
+Use [agent_template.py](personal_assistant/agent_template.py) when you need a
+different model or a smaller tool bundle:
+
+```python
+from personal_assistant.agent_template import create_agent
+
+planning_agent = create_agent(
+    name="planning_agent",
+    model="claude",
+    tools=["current_time", "add_task", "get_tasks"],
 )
 ```
 
----
+`model` accepts `gemini`, `claude`, `openai`, or any provider-qualified LiteLLM
+ID such as `openai/gpt-4o-mini`.
 
-# 11. Create Task Tools
-
-Create:
-
-```text
-tools/task_tools.py
-```
-
-The task tools will eventually provide functionality such as:
+Available tool names:
 
 ```text
-add_task()
-get_tasks()
-complete_task()
-delete_task()
-update_task()
+current_time
+add_task
+get_tasks
+complete_task
+add_meeting
+get_upcoming_meetings
+create_reminder
+get_reminders
 ```
 
-Example user interaction:
+An unknown tool name raises a clear `ValueError`. If `tools` is omitted, the
+agent receives the complete default tool bundle.
 
-```text
-User:
+## Model Configuration
 
-Add a task to complete API automation today.
+The default configurable agent reads `ASSISTANT_MODEL` from `.env`:
+
+```dotenv
+ASSISTANT_MODEL=gemini
 ```
 
-The ADK agent determines that it needs to call:
+You can use an alias:
 
-```python
-add_task()
+```dotenv
+ASSISTANT_MODEL=claude
 ```
 
----
+Or a complete LiteLLM model ID:
 
-# 12. Create Calendar Tools
-
-Create:
-
-```text
-tools/calendar_tools.py
+```dotenv
+ASSISTANT_MODEL=openai/gpt-4o-mini
 ```
 
-Initial functionality:
+The three UI agent cards use fixed aliases so selecting an agent always selects
+the intended provider. Change the defaults in
+[model_config.py](personal_assistant/model_config.py) when you want to update
+the model behind an alias.
 
-```text
-add_meeting()
-get_upcoming_meetings()
-```
+## Database Tools
 
-Example:
-
-```text
-User:
-
-Schedule a project meeting tomorrow at 10 AM.
-```
-
-The agent calls:
-
-```python
-add_meeting()
-```
-
-Later this will be replaced/extended with **Google Calendar API integration**.
-
----
-
-# 13. Create Reminder Tools
-
-Create:
-
-```text
-tools/reminder_tools.py
-```
-
-Initial functionality:
-
-```text
-create_reminder()
-get_reminders()
-```
-
-Example:
-
-```text
-User:
-
-Remind me to call my manager at 5 PM.
-```
-
-The agent stores the reminder.
-
----
-
-# 14. Initialize the Database
-
-The application will use SQLite for local storage.
-
-The database will eventually contain:
-
-```text
-tasks
-meetings
-reminders
-notes
-```
-
-Create:
-
-```text
-init_db.py
-```
-
-Run:
+The SQLite database is stored at `database/assistant.db`. Initialize it with:
 
 ```bash
 uv run python init_db.py
 ```
 
-The database will be created under:
+The tool modules create their tables when their initialization functions run.
+For a clean local database, stop the app, remove `database/assistant.db`, and
+run the initialization command again.
 
-```text
-database/assistant.db
+## Testing And Validation
+
+Compile the application and tools:
+
+```bash
+uv run python -m py_compile \
+  main.py web_app.py init_db.py \
+  personal_assistant/*.py \
+  claude_agent/agent.py gemini_agent/agent.py openai_agent/agent.py \
+  tools/*.py
 ```
 
----
+Check the custom web server without making a model request:
 
-# 15. Verify Dependencies
+```bash
+PORT=8081 uv run python main.py
+```
 
-Run:
+In another terminal:
+
+```bash
+curl http://127.0.0.1:8081/api/agents
+curl http://127.0.0.1:8081/
+```
+
+The agent endpoint should return Claude, Gemini, and OpenAI. A real chat request
+requires a valid API key for the selected provider and may incur provider
+charges.
+
+## Troubleshooting
+
+### Address already in use
+
+Run the custom UI on another port:
+
+```bash
+PORT=8081 uv run python main.py
+```
+
+To see what is using a port on macOS:
+
+```bash
+lsof -i :8080
+```
+
+### LiteLLM import error
+
+Install the ADK extensions and synchronize the environment:
 
 ```bash
 uv sync
 ```
 
-This ensures that all dependencies defined in `pyproject.toml` are installed.
+For pip installations, reinstall from `requirements.txt`.
 
-You can also check:
+### Provider authentication error
 
-```bash
-uv tree
-```
+Check that the selected provider's environment variable is present in `.env`
+and that the key is valid. Restart the server after changing `.env`.
 
-This displays the project's dependency tree.
+### Gemini LiteLLM warning
 
----
-
-# 16. Run the Agent from CLI
-
-Run:
-
-```bash
-uv run adk run personal_assistant
-```
-
-You should then be able to interact with the agent from the terminal.
-
-Example:
-
-```text
-You:
-
-What time is it?
-
-Assistant:
-
-The current time is ...
-```
-
----
-
-# 17. Run the ADK Web Interface
-
-For development, the ADK web interface is very useful.
-
-Run:
-
-```bash
-uv run adk web
-```
-
-ADK will start its development server.
-
-The terminal will display the local URL.
-
-Open that URL in your browser.
-
-You should see the ADK development interface.
-
-Select:
-
-```text
-personal_assistant
-```
-
-and start chatting with your agent.
-
----
-
-# 18. Test the Agent
-
-Try these commands.
-
-### Test 1 — Current time
-
-```text
-What is the current date and time?
-```
-
----
-
-### Test 2 — Add task
-
-```text
-Add a task to complete the API automation project.
-```
-
----
-
-### Test 3 — View tasks
-
-```text
-Show me my pending tasks.
-```
-
----
-
-### Test 4 — Complete task
-
-```text
-Mark task 1 as completed.
-```
-
----
-
-### Test 5 — Add meeting
-
-```text
-Schedule a project meeting tomorrow at 10 AM.
-```
-
----
-
-### Test 6 — Upcoming meetings
-
-```text
-What meetings do I have coming up?
-```
-
----
-
-### Test 7 — Reminder
-
-```text
-Remind me to call my manager tomorrow at 5 PM.
-```
-
----
-
-# 19. Automatic Desktop Notifications
-
-The next stage is to run a background scheduler.
-
-The architecture will be:
-
-```text
-             SQLite
-                │
-                ▼
-        ┌───────────────┐
-        │   Scheduler   │
-        │               │
-        │ Every 30 sec  │
-        └───────┬───────┘
-                │
-                ▼
-       Check upcoming reminder
-                │
-                ▼
-        ┌───────────────┐
-        │   Notification│
-        │    Service    │
-        └───────┬───────┘
-                │
-                ▼
-          🔔 Desktop Alert
-```
-
-Example:
-
-```text
-🔔 Meeting Reminder
-
-Project Kickoff starts in 15 minutes.
-```
-
----
-
-# 20. Google Calendar Integration
-
-After the local calendar works, integrate Google Calendar.
-
-The final flow will become:
-
-```text
-User
- │
- ▼
-ADK Agent
- │
- ▼
-Calendar Tool
- │
- ▼
-Google Calendar API
- │
- ▼
-Your real calendar
-```
-
-Example:
-
-```text
-User:
-
-What meetings do I have tomorrow?
-```
-
-The agent will retrieve the actual Google Calendar events.
-
-Example response:
-
-```text
-You have 3 meetings tomorrow:
-
-09:30 AM
-Daily Standup
-
-11:00 AM
-Project Discussion
-
-03:00 PM
-Client Meeting
-```
-
----
-
-# 21. Future Gmail Integration
-
-The assistant can later integrate Gmail.
-
-Example:
-
-```text
-User:
-
-Do I have any important emails today?
-```
-
-The agent can retrieve relevant emails and summarize them.
-
-Another example:
-
-```text
-User:
-
-Summarize today's emails.
-```
-
-Architecture:
-
-```text
-              ADK Agent
-                  │
-          ┌───────┴────────┐
-          │                │
-          ▼                ▼
-     Calendar Tool     Gmail Tool
-          │                │
-          ▼                ▼
-   Google Calendar       Gmail
-```
-
----
-
-# 22. Laptop Automation
-
-Eventually, we can add controlled laptop tools.
-
-Possible functionality:
-
-```text
-Open Chrome
-Open VS Code
-Open Terminal
-Open a project
-Open a website
-Create a file
-Search local files
-Run approved commands
-```
-
-Example:
-
-```text
-User:
-
-Open my personal assistant project in VS Code.
-```
-
-The agent could invoke a controlled tool such as:
-
-```python
-open_project()
-```
-
-For security, arbitrary shell execution should **not** be exposed directly to the LLM. Use allowlisted operations and require confirmation for potentially destructive actions.
-
----
-
-# 23. Voice Assistant
-
-A later version can support:
-
-```text
-🎤 User speaks
-       │
-       ▼
-Speech-to-Text
-       │
-       ▼
-ADK Agent
-       │
-       ▼
-Tools
-       │
-       ▼
-Text-to-Speech
-       │
-       ▼
-🔊 Assistant speaks
-```
-
-Example:
-
-```text
-You:
-
-"Hey assistant, what meetings do I have today?"
-
-Assistant:
-
-"You have three meetings today..."
-```
-
----
-
-# 24. Recommended Agent Architecture
-
-As the project becomes larger, use specialized agents.
-
-```text
-                       ┌───────────────────┐
-                       │   Root Agent      │
-                       │ Personal Assistant│
-                       └─────────┬─────────┘
-                                 │
-          ┌──────────────────────┼─────────────────────┐
-          │                      │                     │
-          ▼                      ▼                     ▼
-   ┌─────────────┐       ┌─────────────┐       ┌─────────────┐
-   │ Task Agent  │       │Calendar Agent│      │Reminder Agent│
-   └──────┬──────┘       └──────┬──────┘       └──────┬──────┘
-          │                     │                     │
-          ▼                     ▼                     ▼
-      Task DB              Google Calendar       Scheduler
-```
-
-The root agent decides which specialized agent/tool should handle the request.
-
----
-
-# 25. Development Workflow
-
-Whenever you start working on the project:
-
-```bash
-cd personal-assistant
-```
-
-Synchronize dependencies:
-
-```bash
-uv sync
-```
-
-Run the ADK development UI:
-
-```bash
-uv run adk web
-```
-
-Make your code changes.
-
-Test the agent.
-
----
-
-# 26. Git Setup
-
-Initialize Git:
-
-```bash
-git init
-```
-
-Add files:
-
-```bash
-git add .
-```
-
-Create your first commit:
-
-```bash
-git commit -m "Initial personal AI assistant project"
-```
-
-Before committing, verify that `.env` is ignored:
-
-```bash
-git status
-```
-
-You should **not** see:
-
-```text
-.env
-```
-
----
-
-# 27. Useful uv Commands
-
-### Check uv version
-
-```bash
-uv --version
-```
-
-### List installed Python versions
-
-```bash
-uv python list
-```
-
-### Install Python
-
-```bash
-uv python install 3.12
-```
-
-### Pin Python
-
-```bash
-uv python pin 3.12
-```
-
-### Add dependency
-
-```bash
-uv add package-name
-```
-
-Example:
-
-```bash
-uv add google-adk
-```
-
-### Remove dependency
-
-```bash
-uv remove package-name
-```
-
-### Synchronize environment
-
-```bash
-uv sync
-```
-
-### Run Python
-
-```bash
-uv run python
-```
-
-### Run Python file
-
-```bash
-uv run python init_db.py
-```
-
-### Run ADK
-
-```bash
-uv run adk web
-```
-
----
-
-# 28. Complete Setup Commands
-
-For a fresh machine, the basic setup is:
-
-```bash
-# Install uv
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Install Python
-uv python install 3.12
-
-# Create project
-uv init personal-assistant
-
-# Enter project
-cd personal-assistant
-
-# Pin Python
-uv python pin 3.12
-
-# Install dependencies
-uv add google-adk
-uv add python-dotenv
-uv add apscheduler
-uv add plyer
-
-# Create directories
-mkdir -p personal_assistant
-mkdir -p tools
-mkdir -p services
-mkdir -p database
-
-# Create package files
-touch personal_assistant/__init__.py
-touch tools/__init__.py
-touch services/__init__.py
-
-# Synchronize environment
-uv sync
-
-# Run ADK
-uv run adk web
-```
-
----
-
-# 29. Final Project Structure
-
-The completed project is expected to look like:
-
-```text
-personal-assistant/
-│
-├── .env
-├── .gitignore
-├── .python-version
-├── README.md
-├── pyproject.toml
-├── uv.lock
-│
-├── personal_assistant/
-│   ├── __init__.py
-│   ├── agent.py
-│   │
-│   └── agents/
-│       ├── task_agent.py
-│       ├── calendar_agent.py
-│       ├── reminder_agent.py
-│       └── laptop_agent.py
-│
-├── tools/
-│   ├── __init__.py
-│   ├── task_tools.py
-│   ├── calendar_tools.py
-│   ├── reminder_tools.py
-│   ├── gmail_tools.py
-│   └── laptop_tools.py
-│
-├── services/
-│   ├── __init__.py
-│   ├── scheduler.py
-│   └── notification_service.py
-│
-├── database/
-│   └── assistant.db
-│
-└── tests/
-    ├── test_tasks.py
-    ├── test_calendar.py
-    └── test_reminders.py
-```
-
----
-
-# 🚀 Development Roadmap
-
-## Phase 1 — Basic Agent
-
-* [x] Python project
-* [x] uv setup
-* [x] Google ADK
-* [x] Gemini model
-* [ ] Basic agent testing
-
-## Phase 2 — Task Management
-
-* [ ] Add task
-* [ ] List tasks
-* [ ] Complete task
-* [ ] Delete task
-* [ ] Update task
-* [ ] Task priorities
-
-## Phase 3 — Reminders
-
-* [ ] Create reminder
-* [ ] List reminders
-* [ ] Background scheduler
-* [ ] Desktop notification
-* [ ] Meeting reminder
-
-## Phase 4 — Calendar
-
-* [ ] Local calendar
-* [ ] Google Calendar API
-* [ ] Create event
-* [ ] Update event
-* [ ] Delete event
-* [ ] Today's meetings
-* [ ] Tomorrow's meetings
-
-## Phase 5 — Gmail
-
-* [ ] Gmail API
-* [ ] Read emails
-* [ ] Summarize emails
-* [ ] Find important emails
-
-## Phase 6 — Laptop Assistant
-
-* [ ] Open applications
-* [ ] Open websites
-* [ ] Open projects
-* [ ] Search files
-* [ ] Controlled terminal commands
-
-## Phase 7 — Voice
-
-* [ ] Speech-to-text
-* [ ] Voice commands
-* [ ] Text-to-speech
-* [ ] Wake word
-
-## Phase 8 — Advanced ADK
-
-* [ ] Multi-agent architecture
-* [ ] Agent delegation
-* [ ] Session management
-* [ ] Persistent memory
-* [ ] MCP integration
-* [ ] Authentication
-* [ ] Logging
-* [ ] Error handling
-* [ ] Automated tests
-
----
-
-# 🎯 Example Final Experience
-
-Eventually, you should be able to open your laptop and say:
-
-```text
-You:
-
-Good morning.
-```
-
-The assistant:
-
-```text
-Good morning!
-
-Here is your schedule for today:
-
-📅 Meetings
-09:30 AM - Daily Standup
-11:00 AM - Project Discussion
-03:00 PM - Client Meeting
-
-✅ Tasks
-1. Complete API automation
-2. Review pull request
-3. Update documentation
-
-⏰ Reminders
-05:00 PM - Call manager
-
-You have 3 meetings and 3 pending tasks today.
-```
-
-And during the day:
-
-```text
-🔔 15-minute reminder
-
-Client Meeting starts at 3:00 PM.
-```
-
-The long-term goal is to turn this into a **personal AI operating assistant** that can understand natural-language requests and safely perform approved actions across your calendar, reminders, email, and laptop.
+ADK may warn that Gemini's native integration can be used directly. This is an
+informational warning; the current implementation intentionally uses LiteLLM
+so all three providers share the same model interface.

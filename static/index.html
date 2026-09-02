@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Personal Assistant</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">PA</span><span>Personal<br><strong>Assistant</strong></span></div>
+      <div class="sidebar-copy"><span class="eyebrow">Workspace</span><h1>Choose your<br><em>thinking partner.</em></h1><p>Switch models before you begin. Your conversation stays with the agent you choose.</p></div>
+      <div class="status"><span class="status-dot"></span><span>Local workspace</span><span class="status-lock">Private</span></div>
+    </aside>
+    <section class="workspace">
+      <header class="topbar"><div><span class="eyebrow">Conversation</span><h2 id="conversation-title">Select an agent</h2></div><button class="new-chat" id="new-chat" type="button"><span>+</span> New chat</button></header>
+      <div class="agent-picker" id="agent-picker" aria-label="Choose an agent"></div>
+      <section class="chat-panel" id="chat-panel">
+        <div class="welcome" id="welcome"><div class="welcome-icon">✦</div><span class="eyebrow">Ready when you are</span><h3 id="welcome-title">Start with an agent</h3><p>Choose Claude, Gemini, or OpenAI above. I can organize tasks, schedule meetings, and keep reminders close.</p><div class="suggestions"><button type="button" data-prompt="What do I have planned today?">Today’s plan <span>→</span></button><button type="button" data-prompt="Add a task to review my priorities">Add a task <span>→</span></button><button type="button" data-prompt="Show my upcoming meetings">Upcoming meetings <span>→</span></button></div></div>
+        <div class="messages" id="messages"></div>
+      </section>
+      <form class="composer" id="composer"><textarea id="message" rows="1" placeholder="Select an agent to begin..." disabled></textarea><button class="send" type="submit" disabled aria-label="Send message">↑</button><div class="composer-meta"><span>Enter to send · Shift + Enter for a new line</span><span id="tool-count">No agent selected</span></div></form>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>
