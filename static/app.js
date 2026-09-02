@@ -8,6 +8,8 @@ const textarea = document.querySelector('#message');
 const composer = document.querySelector('#composer');
 const send = document.querySelector('.send');
 const toolCount = document.querySelector('#tool-count');
+const toolsPopover = document.querySelector('#tools-popover');
+const toolList = document.querySelector('#tool-list');
 
 function initials(label) { return label === 'OpenAI' ? 'O' : label[0]; }
 function renderAgents() {
@@ -21,9 +23,27 @@ function selectAgent(id) {
   welcomeTitle.textContent = `Talk to ${agent.label}`;
   textarea.disabled = false; send.disabled = false; textarea.placeholder = `Message ${agent.label}...`;
   toolCount.textContent = `${agent.tools.length} tools ready`;
+  toolCount.disabled = false;
+  toolList.innerHTML = agent.tools.map(tool => `<span class="tool-chip">${tool.replaceAll('_', ' ')}</span>`).join('');
+  closeTools();
   messages.innerHTML = ''; welcome.style.display = '';
   renderAgents(); textarea.focus();
 }
+function closeTools() {
+  toolsPopover.hidden = true;
+  toolCount.setAttribute('aria-expanded', 'false');
+}
+toolCount.addEventListener('click', event => {
+  event.stopPropagation();
+  const isOpen = !toolsPopover.hidden;
+  closeTools();
+  if (!isOpen) {
+    toolsPopover.hidden = false;
+    toolCount.setAttribute('aria-expanded', 'true');
+  }
+});
+document.addEventListener('click', closeTools);
+document.addEventListener('keydown', event => { if (event.key === 'Escape') closeTools(); });
 function addMessage(role, text) {
   welcome.style.display = 'none';
   const item = document.createElement('div'); item.className = `message ${role}`;

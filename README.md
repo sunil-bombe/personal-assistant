@@ -22,6 +22,7 @@ sessions.
 ```text
 personal-assistant/
 ├── main.py                         # Custom web server entrypoint
+├── run.sh                          # Step-by-step setup and launch script
 ├── web_app.py                      # FastAPI app and ADK runner integration
 ├── init_db.py                      # Initialize the SQLite database
 ├── pyproject.toml                  # uv project configuration
@@ -133,6 +134,48 @@ HOST=0.0.0.0 PORT=8081 uv run python main.py
 
 The server reads `HOST` and `PORT` in [main.py](main.py). The default values are
 `127.0.0.1` and `8080`.
+
+## Run With The Script
+
+On macOS or Linux, the included [run.sh](run.sh) performs the setup and launch
+steps in order:
+
+1. Finds the project directory, regardless of the current shell directory.
+2. Checks that `uv` is installed.
+3. Synchronizes dependencies with `uv sync`.
+4. Initializes the SQLite database with `init_db.py`.
+5. Compiles the application and tool modules.
+6. Starts the custom web UI.
+
+Make the script executable once:
+
+```bash
+chmod +x run.sh
+```
+
+Run it from the project directory:
+
+```bash
+./run.sh
+```
+
+Open the printed URL, select an agent, and begin chatting. Press `Ctrl+C` in
+the terminal to stop the server.
+
+If port `8080` is occupied, pass a different port:
+
+```bash
+PORT=8081 ./run.sh
+```
+
+To listen on a specific host and port:
+
+```bash
+HOST=0.0.0.0 PORT=8081 ./run.sh
+```
+
+The script stops immediately if dependency installation, database
+initialization, compilation, or server startup fails.
 
 ## Using The Web UI
 
