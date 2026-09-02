@@ -5,6 +5,13 @@ Claude, Gemini, or OpenAI before starting a conversation. Every provider uses
 the same agent template, SQLite-backed tools, and private in-memory web
 sessions.
 
+## UI Demo
+
+The screenshot below shows the web interface with the agent picker, active
+OpenAI workspace, conversation, and message composer.
+
+![Personal Assistant web UI demo](Docs/image.png)
+
 ## Features
 
 - Agent picker for Claude, Gemini, and OpenAI.
